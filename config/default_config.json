@@ -1,0 +1,25 @@
+{
+  "hsv_thresholds": {
+    "lower": [35, 40, 40],
+    "upper": [85, 255, 255]
+  },
+  "processing": {
+    "median_blur_kernel": 3,
+    "morphology_iterations": 1,
+    "morphology_kernel_size": 3
+  },
+  "ui": {
+    "window_width": 1200,
+    "window_height": 900,
+    "brush_radius_default": 20,
+    "brush_radius_min": 1,
+    "brush_radius_max": 200,
+    "undo_stack_limit": 30
+  },
+  "output": {
+    "rectified_format": "jpg",
+    "mask_format": "png",
+    "overlay_format": "jpg",
+    "default_normalize": "none"
+  }
+}
