@@ -4,11 +4,14 @@ import pytest
 import numpy as np
 import sys
 import os
+import json
+import tempfile
+import shutil
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from plots_green import order_points, auto_output_size, rotate90
+from plots_green import order_points, auto_output_size, rotate90, load_progress, save_progress, get_existing_results
 
 
 class TestGeometry:
@@ -47,3 +50,44 @@ class TestOrientation:
         for _ in range(4):
             result = rotate90(result, 1)
         assert np.array_equal(result, img)
+
+
+class TestProgressTracking:
+    """Test progress tracking and resume functionality."""
+    
+    def test_save_and_load_progress(self):
+        """Test saving and loading progress."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            processed = {"img1.jpg", "img2.jpg", "img3.jpg"}
+            save_progress(tmpdir, processed)
+            
+            loaded = load_progress(tmpdir)
+            assert loaded == processed
+    
+    def test_load_progress_empty(self):
+        """Test loading progress when no file exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            loaded = load_progress(tmpdir)
+            assert loaded == set()
+    
+    def test_get_existing_results(self):
+        """Test loading existing CSV results."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "test.csv")
+            with open(csv_path, 'w') as f:
+                f.write("image,percent_green,rect_width,rect_height\n")
+                f.write("img1.jpg,45.2,800,600\n")
+                f.write("img2.jpg,52.1,800,600\n")
+            
+            results = get_existing_results(csv_path)
+            assert len(results) == 2
+            assert "img1.jpg" in results
+            assert results["img1.jpg"]["percent_green"] == "45.2"
+    
+    def test_get_existing_results_empty(self):
+        """Test loading results when no file exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "nonexistent.csv")
+            results = get_existing_results(csv_path)
+            assert results == {}
+

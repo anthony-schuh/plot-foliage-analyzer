@@ -390,6 +390,41 @@ def process_image(img_path, args, writer, thresholds_store):
     print(f"[OK] {os.path.basename(img_path)} → {percent:.2f}% green, size={warped.shape[1]}x{warped.shape[0]}")
     return True
 
+# ---------- Progress tracking ----------
+def load_progress(output_dir):
+    """Load list of already processed images."""
+    progress_file = os.path.join(output_dir, ".progress.json")
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, "r") as f:
+                data = json.load(f)
+                return set(data.get("processed", []))
+        except Exception:
+            pass
+    return set()
+
+def save_progress(output_dir, processed_images):
+    """Save list of processed images."""
+    progress_file = os.path.join(output_dir, ".progress.json")
+    try:
+        with open(progress_file, "w") as f:
+            json.dump({"processed": sorted(list(processed_images))}, f, indent=2)
+    except Exception:
+        pass
+
+def get_existing_results(csv_path):
+    """Load existing results from CSV."""
+    existing = {}
+    if os.path.exists(csv_path):
+        try:
+            with open(csv_path, "r") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    existing[row["image"]] = row
+        except Exception:
+            pass
+    return existing
+
 # ---------- Main loop ----------
 def main():
     ap = argparse.ArgumentParser(description="Interactive plot rectification & green quantification with HSV tuner + exclusions")
@@ -401,6 +436,8 @@ def main():
                     help="Rotate rectified output to desired orientation before tuning")
     ap.add_argument("--tune", action="store_true",
                     help="Open HSV tuner after rectification to adjust thresholds and paint/rect exclude")
+    ap.add_argument("--resume", action="store_true",
+                    help="Resume from last processed image, skipping already completed ones")
     args = ap.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -426,16 +463,46 @@ def main():
     if not images:
         print("No images found."); return
 
-    # CSV out
+    # Load progress and existing results
+    processed_images = load_progress(args.output) if args.resume else set()
     csv_path = os.path.join(args.output, "foliage_results.csv")
-    with open(csv_path, "w", newline="") as f:
+    existing_results = get_existing_results(csv_path)
+
+    # Filter out already processed images
+    images_to_process = []
+    for img_path in images:
+        img_name = os.path.basename(img_path)
+        if args.resume and img_name in processed_images:
+            print(f"[RESUME] Skipping already processed: {img_name}")
+        else:
+            images_to_process.append(img_path)
+
+    if not images_to_process:
+        print("All images already processed!")
+        return
+
+    print(f"\nProcessing {len(images_to_process)} of {len(images)} total images")
+    if args.resume and processed_images:
+        print(f"Resuming from image {len(processed_images) + 1}")
+
+    # CSV out - append mode if resuming, write mode if starting fresh
+    mode = "a" if args.resume and os.path.exists(csv_path) else "w"
+    with open(csv_path, mode, newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["image", "percent_green", "rect_width", "rect_height"])
+        # Write header only if new file
+        if mode == "w":
+            writer.writerow(["image", "percent_green", "rect_width", "rect_height"])
+        
         try:
-            for p in images:
+            for p in images_to_process:
                 process_image(p, args, writer, thresholds_store)
+                # Track progress after successful processing
+                processed_images.add(os.path.basename(p))
+                save_progress(args.output, processed_images)
+                f.flush()  # Ensure CSV is written immediately
         except KeyboardInterrupt:
-            print("\n[QUIT] Stopping early by user request.")
+            print(f"\n[QUIT] Stopping after processing {len(processed_images)} images.")
+            print(f"Run with --resume to continue from where you left off.")
 
 if __name__ == "__main__":
     main()

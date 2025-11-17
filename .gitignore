@@ -40,6 +40,7 @@ data/output/*
 # Results
 *.csv
 hsv_thresholds.json
+.progress.json
 *_rectified.jpg
 *_mask.png
 *_overlay.jpg
