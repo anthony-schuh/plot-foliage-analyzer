@@ -9,6 +9,8 @@ Interactive OpenCV tool for rectifying plot images and quantifying **green veget
 - [Features](#features)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+  - [GUI wrapper](#gui-wrapper)
+  - [Command line](#command-line)
 - [Workflow overview](#workflow-overview)
 - [Keyboard & mouse controls](#keyboard--mouse-controls)
   - [Phase 1: Corner selection](#phase-1-corner-selection)
@@ -66,6 +68,22 @@ If you’re SSH’ing, use a local desktop session or enable X forwarding with `
 ---
 
 ## Quick start
+
+### GUI wrapper
+**Easiest option:** Use the graphical interface to configure and run the analyzer.
+
+```bash
+./run_gui.sh
+```
+
+Or directly:
+```bash
+python3 plot_analyzer_gui.py
+```
+
+The GUI lets you browse for folders, set options, and launch the analysis tool. See [GUI_README.md](GUI_README.md) for details.
+
+### Command line
 
 ```bash
 QT_QPA_PLATFORM=xcb python src/plots_green.py   --input field_imaging/Canopy_wk4/   --output field_imaging/output/   --normalize landscape   --tune
