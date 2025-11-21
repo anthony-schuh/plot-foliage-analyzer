@@ -168,7 +168,7 @@ QT_QPA_PLATFORM=xcb python src/plots_green.py   --input field_imaging/Canopy_wk4
 
 ## Command-line options
 ```text
---input <folder>            Folder with input images
+--input <path>              Single image file or folder with input images
 --output <folder>           Folder to save results
 --width <int>               Forced rectified width (px)
 --height <int>              Forced rectified height (px)
@@ -180,6 +180,11 @@ QT_QPA_PLATFORM=xcb python src/plots_green.py   --input field_imaging/Canopy_wk4
 **Example:**
 ```bash
 QT_QPA_PLATFORM=xcb python src/plots_green.py   --input data/in   --output data/out   --normalize landscape   --tune
+```
+
+**Single image:**
+```bash
+python src/plots_green.py --input data/in/plot_001.jpg --output data/out --tune
 ```
 
 **Batch (no tuner):**

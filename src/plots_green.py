@@ -458,7 +458,7 @@ def write_results_csv(csv_path, order, results):
 # ---------- Main loop ----------
 def main():
     ap = argparse.ArgumentParser(description="Interactive plot rectification & green quantification with HSV tuner + exclusions")
-    ap.add_argument("--input", required=True, help="Folder with input images")
+    ap.add_argument("--input", required=True, help="Image file or folder with input images")
     ap.add_argument("--output", required=True, help="Folder to save results")
     ap.add_argument("--width", type=int, default=None, help="Forced rectified width")
     ap.add_argument("--height", type=int, default=None, help="Forced rectified height")
@@ -486,9 +486,16 @@ def main():
     thresholds_store = {"lower": lower, "upper": upper, "path": th_path}
 
     # Gather images
-    images = []
-    for ext in ("*.jpg","*.jpeg","*.png","*.tif","*.tiff","*.bmp"):
-        images.extend(glob.glob(os.path.join(args.input, ext)))
+    input_path = args.input
+    if os.path.isfile(input_path):
+        images = [input_path]
+    elif os.path.isdir(input_path):
+        images = []
+        for ext in ("*.jpg","*.jpeg","*.png","*.tif","*.tiff","*.bmp"):
+            images.extend(glob.glob(os.path.join(input_path, ext)))
+    else:
+        print(f"Input path not found: {input_path}")
+        return
     images.sort()
     if not images:
         print("No images found."); return

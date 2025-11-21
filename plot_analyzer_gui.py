@@ -18,7 +18,7 @@ class PlotAnalyzerGUI:
         self.root.geometry("700x600")
         
         # Variables
-        self.input_folder = tk.StringVar()
+        self.input_path = tk.StringVar()
         self.output_folder = tk.StringVar()
         self.width_var = tk.StringVar()
         self.height_var = tk.StringVar()
@@ -51,13 +51,17 @@ class PlotAnalyzerGUI:
             row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
         row += 1
         
-        # Input folder
-        ttk.Label(main_frame, text="Input Folder:").grid(
+        # Input path (file or folder)
+        ttk.Label(main_frame, text="Input Path:").grid(
             row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.input_folder, width=50).grid(
+        ttk.Entry(main_frame, textvariable=self.input_path, width=50).grid(
             row=row, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
-        ttk.Button(main_frame, text="Browse...", 
-                  command=self.browse_input).grid(row=row, column=2, pady=5)
+        input_btns = ttk.Frame(main_frame)
+        input_btns.grid(row=row, column=2, pady=5)
+        ttk.Button(input_btns, text="Folder...",
+                  command=self.browse_input_folder).pack(fill=tk.X, pady=2)
+        ttk.Button(input_btns, text="File...",
+                  command=self.browse_input_file).pack(fill=tk.X, pady=2)
         row += 1
         
         # Output folder
@@ -133,7 +137,7 @@ class PlotAnalyzerGUI:
                            background='#f0f0f0', relief=tk.FLAT)
         info_text.insert('1.0', 
             "This tool analyzes plot images to quantify green vegetation (foliage).\n\n"
-            "• Input folder should contain your plot images\n"
+            "• Input path can be a single image or a folder of images\n"
             "• Output folder will store rectified images, masks, and results CSV\n"
             "• With HSV Tuner enabled, you'll interactively adjust thresholds\n"
             "• Use Resume to continue interrupted batch processing")
@@ -153,10 +157,21 @@ class PlotAnalyzerGUI:
         ttk.Button(button_frame, text="Quit", 
                   command=self.root.quit).pack(side=tk.LEFT, padx=5)
         
-    def browse_input(self):
+    def browse_input_folder(self):
         folder = filedialog.askdirectory(title="Select Input Folder")
         if folder:
-            self.input_folder.set(folder)
+            self.input_path.set(folder)
+            
+    def browse_input_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Image File",
+            filetypes=[
+                ("Image files", "*.jpg *.jpeg *.png *.tif *.tiff *.bmp"),
+                ("All files", "*.*"),
+            ],
+        )
+        if file_path:
+            self.input_path.set(file_path)
             
     def browse_output(self):
         folder = filedialog.askdirectory(title="Select Output Folder")
@@ -164,16 +179,17 @@ class PlotAnalyzerGUI:
             self.output_folder.set(folder)
     
     def validate_inputs(self):
-        if not self.input_folder.get():
-            messagebox.showerror("Error", "Please select an input folder")
+        input_path = self.input_path.get().strip()
+        if not input_path:
+            messagebox.showerror("Error", "Please select an input file or folder")
             return False
             
         if not self.output_folder.get():
             messagebox.showerror("Error", "Please select an output folder")
             return False
             
-        if not os.path.exists(self.input_folder.get()):
-            messagebox.showerror("Error", "Input folder does not exist")
+        if not os.path.exists(input_path):
+            messagebox.showerror("Error", "Input path does not exist")
             return False
             
         # Validate width and height if provided
@@ -199,7 +215,7 @@ class PlotAnalyzerGUI:
         plots_script = os.path.join(script_dir, "src", "plots_green.py")
         
         cmd = [sys.executable, plots_script]
-        cmd.extend(["--input", self.input_folder.get()])
+        cmd.extend(["--input", self.input_path.get()])
         cmd.extend(["--output", self.output_folder.get()])
         
         if self.width_var.get():
@@ -264,7 +280,7 @@ PLOT FOLIAGE ANALYZER - HELP
 This tool helps you analyze plot images to quantify green vegetation (carrot foliage).
 
 WORKFLOW:
-1. Select your input folder containing plot images
+1. Select your input file or folder containing plot images
 2. Select an output folder for results
 3. Configure options as needed
 4. Click "Run Analysis"
