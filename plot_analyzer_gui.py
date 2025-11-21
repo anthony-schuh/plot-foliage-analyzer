@@ -259,10 +259,7 @@ class PlotAnalyzerGUI:
         try:
             # Run the command
             subprocess.Popen(cmd, env=env)
-            messagebox.showinfo(
-                "Started", 
-                "Analysis started! The plot analyzer window should appear shortly.\n\n"
-                "You can close this GUI window or leave it open to run another analysis.")
+            self.root.after(0, self.root.destroy)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start analysis:\n{str(e)}")
     
