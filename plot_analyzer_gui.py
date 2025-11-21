@@ -282,6 +282,7 @@ CONTROLS - Corner Selection:
 • u: Undo last point
 • r: Reset all points
 • s: Skip this image
+• p: Go back to the previous image to re-mask
 • Enter: Accept (when 4 points selected)
 • q/Esc: Quit program
 

@@ -33,10 +33,12 @@ def ensure_window(win_name, disp):
     if cv2.getWindowProperty(win_name, cv2.WND_PROP_VISIBLE) == -1:
         raise RuntimeError("OpenCV GUI backend not available. Try: QT_QPA_PLATFORM=xcb python ...")
 
-def draw_instructions(img):
+def draw_instructions(img, allow_prev=False):
     msg = "Click 4 corners: Enter=accept  u=undo  r=reset  s=skip  q=quit  a/d=rot90  h=flipH  v=flipV"
+    if allow_prev:
+        msg += "  p=prev"
     vis = img.copy()
-    cv2.rectangle(vis, (10, 10), (10+8*len(msg), 40), (0, 0, 0), -1)
+    cv2.rectangle(vis, (10, 10), (10 + 8 * len(msg), 40), (0, 0, 0), -1)
     cv2.putText(vis, msg, (15, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1)
     return vis
 
@@ -294,7 +296,7 @@ def tune_thresholds_on_image(warped, lower, upper, exclude_path=None):
     return lower, upper, exclude_mask
 
 # ---------- Per-image processing ----------
-def process_image(img_path, args, writer, thresholds_store):
+def process_image(img_path, args, thresholds_store, allow_prev=False):
     img = imread_exif_safe(img_path)
     disp = img.copy()
     ops = []
@@ -304,7 +306,7 @@ def process_image(img_path, args, writer, thresholds_store):
 
     # --- rotate/flip + pick 4 points ---
     while True:
-        vis = draw_instructions(disp)
+        vis = draw_instructions(disp, allow_prev)
         vis = draw_points_preview(vis, clicker.points)
         cv2.imshow(WIN_NAME, vis)
         key = cv2.waitKey(30) & 0xFF
@@ -314,7 +316,11 @@ def process_image(img_path, args, writer, thresholds_store):
         elif key == ord('s'):
             cv2.destroyWindow(WIN_NAME)
             print(f"[SKIP] {os.path.basename(img_path)}")
-            return True
+            return "skip", None
+        elif key == ord('p') and allow_prev:
+            cv2.destroyWindow(WIN_NAME)
+            print(f"[BACK] Re-opening previous image before {os.path.basename(img_path)}")
+            return "back", None
         elif key in (27, ord('q')):
             cv2.destroyAllWindows()
             raise KeyboardInterrupt
@@ -386,9 +392,14 @@ def process_image(img_path, args, writer, thresholds_store):
         json.dump({"points_xy": clicker.points, "ops": ops,
                    "thresholds": {"lower": lower, "upper": upper}}, f, indent=2)
 
-    writer.writerow([os.path.basename(img_path), f"{percent:.3f}", warped.shape[1], warped.shape[0]])
-    print(f"[OK] {os.path.basename(img_path)} → {percent:.2f}% green, size={warped.shape[1]}x{warped.shape[0]}")
-    return True
+    result_row = {
+        "image": os.path.basename(img_path),
+        "percent_green": f"{percent:.3f}",
+        "rect_width": str(warped.shape[1]),
+        "rect_height": str(warped.shape[0]),
+    }
+    print(f"[OK] {result_row['image']} → {percent:.2f}% green, size={warped.shape[1]}x{warped.shape[0]}")
+    return "success", result_row
 
 # ---------- Progress tracking ----------
 def load_progress(output_dir):
@@ -424,6 +435,25 @@ def get_existing_results(csv_path):
         except Exception:
             pass
     return existing
+
+def write_results_csv(csv_path, order, results):
+    """Rewrite the results CSV using provided order and data."""
+    try:
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["image", "percent_green", "rect_width", "rect_height"])
+            for image in order:
+                row = results.get(image)
+                if not row:
+                    continue
+                writer.writerow([
+                    image,
+                    row.get("percent_green", ""),
+                    row.get("rect_width", ""),
+                    row.get("rect_height", ""),
+                ])
+    except Exception:
+        pass
 
 # ---------- Main loop ----------
 def main():
@@ -485,24 +515,53 @@ def main():
     if args.resume and processed_images:
         print(f"Resuming from image {len(processed_images) + 1}")
 
-    # CSV out - append mode if resuming, write mode if starting fresh
-    mode = "a" if args.resume and os.path.exists(csv_path) else "w"
-    with open(csv_path, mode, newline="") as f:
-        writer = csv.writer(f)
-        # Write header only if new file
-        if mode == "w":
-            writer.writerow(["image", "percent_green", "rect_width", "rect_height"])
-        
-        try:
-            for p in images_to_process:
-                process_image(p, args, writer, thresholds_store)
-                # Track progress after successful processing
-                processed_images.add(os.path.basename(p))
+    results_order = list(existing_results.keys())
+
+    i = 0
+    try:
+        while i < len(images_to_process):
+            img_path = images_to_process[i]
+            status, row = process_image(
+                img_path,
+                args,
+                thresholds_store,
+                allow_prev=i > 0,
+            )
+
+            if status == "success" and row:
+                img_name = row["image"]
+                existing_results[img_name] = row
+                if img_name not in results_order:
+                    results_order.append(img_name)
+                write_results_csv(csv_path, results_order, existing_results)
+                processed_images.add(img_name)
                 save_progress(args.output, processed_images)
-                f.flush()  # Ensure CSV is written immediately
-        except KeyboardInterrupt:
-            print(f"\n[QUIT] Stopping after processing {len(processed_images)} images.")
-            print(f"Run with --resume to continue from where you left off.")
+                i += 1
+            elif status == "skip":
+                processed_images.add(os.path.basename(img_path))
+                save_progress(args.output, processed_images)
+                i += 1
+            elif status == "back":
+                if i == 0:
+                    print("Already at first image; cannot go back further.")
+                    continue
+                prev_img = images_to_process[i - 1]
+                prev_name = os.path.basename(prev_img)
+                if prev_name in processed_images:
+                    processed_images.discard(prev_name)
+                    save_progress(args.output, processed_images)
+                if prev_name in existing_results:
+                    existing_results.pop(prev_name, None)
+                    if prev_name in results_order:
+                        results_order.remove(prev_name)
+                    write_results_csv(csv_path, results_order, existing_results)
+                i -= 1
+            else:
+                # Shouldn't happen, but advance to avoid infinite loop
+                i += 1
+    except KeyboardInterrupt:
+        print(f"\n[QUIT] Stopping after processing {len(processed_images)} images.")
+        print("Run with --resume to continue from where you left off.")
 
 if __name__ == "__main__":
     main()

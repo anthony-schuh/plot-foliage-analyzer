@@ -129,10 +129,13 @@ QT_QPA_PLATFORM=xcb python src/plots_green.py   --input field_imaging/Canopy_wk4
 | u    | Undo last point                      |
 | r    | Reset all points                     |
 | s    | Skip this image                      |
+| p    | Go back to previous image to re-mask |
 | Enter| Accept (only when 4 points selected) |
 | q/Esc| Quit program                         |
 
 > Tip: Click corners roughly **TL → TR → BR → BL** for consistency.
+>
+> Made a mistake after moving on? When the next image opens, press **p** to return to the previous photo and redo its mask from scratch.
 
 ---
 
