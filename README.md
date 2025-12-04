@@ -44,8 +44,8 @@ For each photo of a research plot:
 - **Live HSV tuner** — adjust H/S/V min/max interactively.
 - **Exclusion tools** — brush (paint/erase) and **Shift+drag rectangles**.
 - **Persistence** — remembers last thresholds; saves per-image exclusion masks.
-- **Resume capability** — interrupt and resume batch processing anytime.
-- **Progress tracking** — automatically saves progress after each image.
+- **Auto-resume** — rerunning skips images that already have outputs in the target folder.
+- **Results logging** — CSV and per-image artifacts update immediately after each image.
 - **Normalization** — optional portrait/landscape for outputs.
 
 ---
@@ -92,7 +92,7 @@ QT_QPA_PLATFORM=xcb python src/plots_green.py   --input field_imaging/Canopy_wk4
 - Window opens for each image.
 - Rotate/flip if needed → click 4 corners → **Enter**.
 - **HSV Tuner** opens: adjust sliders, paint/rect exclusions → **Enter**.
-- Press **q** to quit anytime; use `--resume` to continue later.
+- Press **q** to quit anytime; rerun later and existing outputs will be skipped automatically.
 
 ---
 
@@ -194,7 +194,7 @@ python src/plots_green.py --input data/in --output data/out --normalize landscap
 
 **Resume after interruption:**
 ```bash
-python src/plots_green.py --input data/in --output data/out --normalize landscape --resume
+python src/plots_green.py --input data/in --output data/out --normalize landscape
 ```
 
 ---

@@ -28,7 +28,7 @@ The GUI provides a user-friendly interface to:
 
 - **Select folders**: Browse and select input/output directories
 - **Configure options**: Set width, height, normalization, and processing modes
-- **Enable/disable features**: Toggle HSV tuner and resume functionality
+- **Enable/disable features**: Toggle the HSV tuner; auto-resume is always enabled
 - **View help**: Built-in help documentation with keyboard controls
 - **Run analysis**: Launch the analysis tool with your configured settings
 
@@ -42,7 +42,7 @@ The GUI provides a user-friendly interface to:
 - **Width/Height**: Force specific dimensions for rectified images (in pixels)
 - **Normalize Output**: Rotate rectified images to landscape, portrait, or none
 - **Enable HSV Tuner**: Open interactive HSV adjustment window for each image
-- **Resume**: Skip already processed images and continue from where you left off
+- **Resume (deprecated)**: Auto-skip is always on; checkbox kept for backwards compatibility
 
 ## How It Works
 

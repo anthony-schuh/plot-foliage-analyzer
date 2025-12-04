@@ -455,6 +455,38 @@ def write_results_csv(csv_path, order, results):
     except Exception:
         pass
 
+SUPPORTED_PATTERNS = ("*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff", "*.bmp")
+
+
+def image_base_name(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
+
+def gather_input_images(input_path):
+    if os.path.isfile(input_path):
+        return [input_path]
+    if os.path.isdir(input_path):
+        images = []
+        for pattern in SUPPORTED_PATTERNS:
+            images.extend(glob.glob(os.path.join(input_path, pattern)))
+        images.sort()
+        return images
+    raise FileNotFoundError(f"Input path not found: {input_path}")
+
+
+def discover_processed_images(output_dir):
+    suffixes = ("_rectified.jpg", "_mask.png", "_overlay.jpg", "_corners.json")
+    processed = set()
+    if not os.path.isdir(output_dir):
+        return processed
+    for suffix in suffixes:
+        pattern = os.path.join(output_dir, f"*{suffix}")
+        for path in glob.glob(pattern):
+            base = os.path.basename(path)
+            if base.endswith(suffix):
+                processed.add(base[:-len(suffix)])
+    return processed
+
 # ---------- Main loop ----------
 def main():
     ap = argparse.ArgumentParser(description="Interactive plot rectification & green quantification with HSV tuner + exclusions")
@@ -467,7 +499,7 @@ def main():
     ap.add_argument("--tune", action="store_true",
                     help="Open HSV tuner after rectification to adjust thresholds and paint/rect exclude")
     ap.add_argument("--resume", action="store_true",
-                    help="Resume from last processed image, skipping already completed ones")
+                    help="(Deprecated) Outputs are auto-detected; flag kept for compatibility")
     args = ap.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -485,42 +517,33 @@ def main():
         lower, upper = [35, 40, 40], [85, 255, 255]
     thresholds_store = {"lower": lower, "upper": upper, "path": th_path}
 
+    if args.resume:
+        print("[INFO] --resume is deprecated; outputs are checked automatically.")
+
     # Gather images
-    input_path = args.input
-    if os.path.isfile(input_path):
-        images = [input_path]
-    elif os.path.isdir(input_path):
-        images = []
-        for ext in ("*.jpg","*.jpeg","*.png","*.tif","*.tiff","*.bmp"):
-            images.extend(glob.glob(os.path.join(input_path, ext)))
-    else:
-        print(f"Input path not found: {input_path}")
+    try:
+        images = gather_input_images(args.input)
+    except FileNotFoundError as exc:
+        print(str(exc))
         return
-    images.sort()
     if not images:
-        print("No images found."); return
+        print("No images found.")
+        return
 
-    # Load progress and existing results
-    processed_images = load_progress(args.output) if args.resume else set()
-    csv_path = os.path.join(args.output, "foliage_results.csv")
-    existing_results = get_existing_results(csv_path)
-
-    # Filter out already processed images
-    images_to_process = []
-    for img_path in images:
-        img_name = os.path.basename(img_path)
-        if args.resume and img_name in processed_images:
-            print(f"[RESUME] Skipping already processed: {img_name}")
-        else:
-            images_to_process.append(img_path)
-
+    processed_bases = discover_processed_images(args.output)
+    images_to_process = [img for img in images if image_base_name(img) not in processed_bases]
     if not images_to_process:
         print("All images already processed!")
         return
 
-    print(f"\nProcessing {len(images_to_process)} of {len(images)} total images")
-    if args.resume and processed_images:
-        print(f"Resuming from image {len(processed_images) + 1}")
+    print(f"\nFound {len(images)} input image(s) in '{args.input}'.")
+    already_done = len(images) - len(images_to_process)
+    if already_done:
+        print(f"Detected {already_done} already processed image(s) in '{args.output}'.")
+    print(f"Processing {len(images_to_process)} remaining image(s).")
+
+    csv_path = os.path.join(args.output, "foliage_results.csv")
+    existing_results = get_existing_results(csv_path)
 
     results_order = list(existing_results.keys())
 
@@ -541,12 +564,9 @@ def main():
                 if img_name not in results_order:
                     results_order.append(img_name)
                 write_results_csv(csv_path, results_order, existing_results)
-                processed_images.add(img_name)
-                save_progress(args.output, processed_images)
+                processed_bases.add(image_base_name(img_name))
                 i += 1
             elif status == "skip":
-                processed_images.add(os.path.basename(img_path))
-                save_progress(args.output, processed_images)
                 i += 1
             elif status == "back":
                 if i == 0:
@@ -554,9 +574,7 @@ def main():
                     continue
                 prev_img = images_to_process[i - 1]
                 prev_name = os.path.basename(prev_img)
-                if prev_name in processed_images:
-                    processed_images.discard(prev_name)
-                    save_progress(args.output, processed_images)
+                processed_bases.discard(image_base_name(prev_name))
                 if prev_name in existing_results:
                     existing_results.pop(prev_name, None)
                     if prev_name in results_order:
@@ -567,8 +585,8 @@ def main():
                 # Shouldn't happen, but advance to avoid infinite loop
                 i += 1
     except KeyboardInterrupt:
-        print(f"\n[QUIT] Stopping after processing {len(processed_images)} images.")
-        print("Run with --resume to continue from where you left off.")
+        print("\n[QUIT] Stopping early. Existing outputs remain intact.")
+        print("Re-run the command to continue; images with saved outputs will be skipped automatically.")
 
 if __name__ == "__main__":
     main()

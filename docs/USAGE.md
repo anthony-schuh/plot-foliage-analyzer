@@ -14,18 +14,9 @@ QT_QPA_PLATFORM=xcb python src/plots_green.py \
     --tune
 ```
 
-**Resume interrupted session:**
+**Quit & continue later:**
 
-If you quit mid-batch (press `q` or `Esc`), resume from where you left off:
-
-```bash
-QT_QPA_PLATFORM=xcb python src/plots_green.py \
-    --input data/input/ \
-    --output data/output/ \
-    --normalize landscape \
-    --tune \
-    --resume
-```
+If you quit mid-batch (press `q` or `Esc`), just rerun the same command; images with existing outputs are skipped automatically.
 
 ### 2. Batch Processing
 
@@ -59,7 +50,7 @@ python scripts/combine_results.py \
 | `--height` | Force rectified height (pixels) | Auto |
 | `--normalize` | Rotate output orientation | `none` |
 | `--tune` | Open HSV tuner for each image | Off |
-| `--resume` | Resume from last processed image | Off |
+| `--resume` | Deprecated; auto skip is always on | Off |
 
 ## Interactive Controls
 
@@ -101,7 +92,6 @@ Summary files:
 
 - `foliage_results.csv` - Vegetation percentages
 - `hsv_thresholds.json` - Last used HSV values
-- `.progress.json` - Processing progress tracker (hidden)
 
 ## Tips
 
@@ -110,5 +100,5 @@ Summary files:
 3. **Remove artifacts**: Use Shift+drag rectangles for large areas
 4. **Fine adjustments**: Use brush for precise exclusions
 5. **Standardize outputs**: Use `--normalize` for consistent orientation
-6. **Resume processing**: Use `--resume` to continue after interruption
-7. **Progress tracking**: The tool automatically saves progress after each image
+6. **Resume processing**: Quit anytime and rerun; existing outputs are auto-skipped
+7. **Results tracking**: CSV/exclusion files update immediately after each image
