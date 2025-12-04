@@ -119,7 +119,7 @@ class PlotAnalyzerGUI:
             row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
         row += 1
         
-        ttk.Checkbutton(main_frame, text="Resume from last processed image",
+        ttk.Checkbutton(main_frame, text="Legacy --resume flag (auto-skip already enabled)",
                        variable=self.resume_var).grid(
             row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
         row += 1
@@ -140,7 +140,7 @@ class PlotAnalyzerGUI:
             "• Input path can be a single image or a folder of images\n"
             "• Output folder will store rectified images, masks, and results CSV\n"
             "• With HSV Tuner enabled, you'll interactively adjust thresholds\n"
-            "• Use Resume to continue interrupted batch processing")
+            "• Quit anytime and rerun; existing outputs are skipped automatically")
         info_text.config(state=tk.DISABLED)
         info_text.pack(fill=tk.BOTH, expand=True)
         row += 1
